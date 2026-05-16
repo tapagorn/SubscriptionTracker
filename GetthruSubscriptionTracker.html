@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getthru SubTrack | Subscription Management</title>
+    
+    <!-- PWA & SEO Meta Tags -->
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="description" content="Professional SaaS Dashboard for tracking subscriptions and product payments.">
+    
+    <!-- Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome & Chart.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; overflow-x: hidden; }
+        .dark body { background-color: #0f172a; color: #f8fafc; }
+        
+        /* Glassmorphism utility */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Responsive Table to Cards for Mobile */
+        @media (max-width: 768px) {
+            .responsive-table thead { display: none; }
+            .responsive-table tbody tr {
+                display: block;
+                margin-bottom: 1rem;
+                background: white;
+                border-radius: 0.75rem;
+                padding: 1rem;
+                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            }
+            .dark .responsive-table tbody tr { background: #1e293b; box-shadow: none; border: 1px solid #334155; }
+            .responsive-table tbody td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.5rem 0;
+                border: none;
+                text-align: right;
+            }
+            .responsive-table tbody td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #64748b;
+                text-align: left;
+            }
+            .responsive-table tbody td:last-child { border-top: 1px solid #e2e8f0; margin-top: 0.5rem; padding-top: 0.75rem; justify-content: flex-end; gap: 0.5rem; }
+            .dark .responsive-table tbody td:last-child { border-color: #334155; }
+        }
+
+        /* Sidebar Transition */
+        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Toast Container */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            min-width: 250px; padding: 16px; border-radius: 8px; color: white; font-weight: 500;
+            display: flex; align-items: center; gap: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            animation: slideInRight 0.3s forwards, fadeOut 0.3s 3s forwards;
+        }
+        .toast.success { background-color: #10b981; }
+        .toast.error { background-color: #ef4444; }
+        .toast.info { background-color: #3b82f6; }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+    </style>
+</head>
+<body class="flex h-screen antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-gray-900/50 z-40 hidden md:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-64 glass shadow-xl md:shadow-none border-r border-gray-200 dark:border-gray-800 flex flex-col sidebar-transition -translate-x-full md:translate-x-0 h-full">
+        <div class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-800">
+            <div class="flex items-center gap-3 text-brand-600 dark:text-brand-500 font-bold text-xl tracking-tight">
+                <i class="fa-solid fa-layer-group"></i> Getthru SubTrack
+            </div>
+            <button class="ml-auto md:hidden text-gray-500" onclick="toggleSidebar()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="p-4 flex-1 overflow-y-auto">
+            <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4 mt-2 px-2">Menu</p>
+            <nav class="space-y-1">
+                <a href="#" onclick="switchView('dashboard')" id="nav-dashboard" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-600 bg-brand-50 dark:bg-brand-500/10 dark:text-brand-400 font-medium transition-colors">
+                    <i class="fa-solid fa-chart-pie w-5"></i> Dashboard
+                </a>
+                <a href="#" onclick="switchView('subscriptions')" id="nav-subscriptions" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 font-medium transition-colors">
+                    <i class="fa-solid fa-list w-5"></i> All Subscriptions
+                </a>
+                <a href="#" onclick="switchView('calendar')" id="nav-calendar" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 font-medium transition-colors">
+                    <i class="fa-regular fa-calendar w-5"></i> Calendar View
+                </a>
+            </nav>
+
+            <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4 mt-8 px-2">Settings</p>
+            <nav class="space-y-1">
+                <a href="#" onclick="fetchDataFromGAS(); showToast('Manual Sync Triggered', 'info')" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 font-medium transition-colors">
+                    <i class="fa-solid fa-rotate w-5"></i> Force Sync
+                </a>
+                <a href="#" onclick="toggleDarkMode()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 font-medium transition-colors">
+                    <i class="fa-solid fa-moon w-5" id="theme-icon"></i> <span id="theme-text">Dark Mode</span>
+                </a>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- Topbar -->
+        <header class="h-16 glass z-30 flex items-center justify-between px-4 sm:px-6 border-b border-gray-200 dark:border-gray-800 sticky top-0">
+            <div class="flex items-center gap-4">
+                <button class="md:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white" onclick="toggleSidebar()">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <h1 id="page-title" class="text-xl font-semibold text-gray-800 dark:text-white hidden sm:block">Dashboard</h1>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="relative hidden md:block">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="global-search" placeholder="Search products..." class="pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border-none rounded-full text-sm focus:ring-2 focus:ring-brand-500 dark:text-white outline-none w-64 transition-all focus:w-72">
+                </div>
+                
+                <!-- Notification Wrapper -->
+                <div class="relative">
+                    <button id="notification-btn" onclick="toggleNotifications()" class="relative p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                        <i class="fa-regular fa-bell text-lg"></i>
+                        <span id="notification-badge" class="hidden absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border border-white dark:border-gray-900"></span>
+                    </button>
+                    
+                    <!-- Notification Dropdown -->
+                    <div id="notification-dropdown" class="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 z-50 hidden flex-col overflow-hidden transition-all duration-200 opacity-0 translate-y-[-10px]">
+                        <div class="flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                            <h3 class="font-semibold text-gray-800 dark:text-white">Activity Log</h3>
+                            <button onclick="markAllAsRead()" class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400 font-medium transition-colors">Mark all as read</button>
+                        </div>
+                        <div id="notification-list" class="max-h-[60vh] overflow-y-auto custom-scrollbar flex flex-col divide-y divide-gray-100 dark:divide-gray-700">
+                            <!-- Items inject here -->
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="openModal()" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg shadow-brand-500/30 transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Add New</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" id="main-content">
+            
+            <div id="view-dashboard" class="fade-in space-y-6">
+                <!-- Stats Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Active</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1" id="stat-active">0</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
+                            <i class="fa-solid fa-check-circle text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Monthly Est. Cost</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1" id="stat-monthly">฿0</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400">
+                            <i class="fa-solid fa-wallet text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Pending Payment</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1" id="stat-pending">0</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-400">
+                            <i class="fa-solid fa-clock text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Expiring Soon (7d)</p>
+                            <p class="text-2xl font-bold text-red-600 dark:text-red-400 mt-1" id="stat-expiring">0</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400">
+                            <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Cost Overview (THB Equivalent)</h3>
+                        <div class="h-64 relative w-full">
+                            <canvas id="barChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Status Distribution</h3>
+                        <div class="h-64 relative w-full flex justify-center">
+                            <canvas id="doughnutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-subscriptions" class="hidden fade-in space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <select id="filter-status" class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            <option value="All">All Status</option>
+                            <option value="Paid">Paid / Active</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400" id="table-count">Showing 0 items</p>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse responsive-table">
+                            <thead>
+                                <tr class="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
+                                    <th class="p-4 font-semibold">Product Name</th>
+                                    <th class="p-4 font-semibold">Price</th>
+                                    <th class="p-4 font-semibold">Renewal / Expire</th>
+                                    <th class="p-4 font-semibold">Status</th>
+                                    <th class="p-4 font-semibold text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body" class="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                                <!-- Table rows injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-center">
+                        <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4 text-gray-400 text-3xl">
+                            <i class="fa-solid fa-box-open"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">No subscriptions found</h3>
+                        <p class="text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">Get started by adding a new subscription or product to track.</p>
+                        <button onclick="openModal()" class="mt-4 text-brand-600 font-medium hover:text-brand-700">Add New Item</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-calendar" class="hidden fade-in">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white" id="calendar-month-year">May 2026</h2>
+                        <div class="flex gap-2">
+                            <button onclick="changeMonth(-1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button onclick="changeMonth(1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-7 gap-1 sm:gap-2 text-center mb-2">
+                        <div class="text-xs font-semibold text-gray-500 uppercase">Sun</div>
+                        <div class="text-xs font-semibold text-gray-500 uppercase">Mon</div>
+                        <div class="text-xs font-semibold text-gray-500 uppercase">Tue</div>
+                        <div class="text-xs font-semibold text-gray-500 uppercase">Wed</div>
+                        <div class="text-xs font-semibold text-gray-500 uppercase">Thu</div>
+                        <div class="text-xs font-semibold text-gray-500 uppercase">Fri</div>
+                        <div class="text-xs font-semibold text-gray-500 uppercase">Sat</div>
+                    </div>
+                    
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-1 sm:gap-2 min-h-[300px]">
+                        <!-- Calendar days injected by JS -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Add/Edit Modal Overlay -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div id="modal-content" class="bg-white dark:bg-gray-800 w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 relative">
+            
+            <!-- Loading Overlay in Modal -->
+            <div id="modal-loader" class="absolute inset-0 bg-white/80 dark:bg-gray-800/80 z-10 hidden flex-col items-center justify-center backdrop-blur-sm">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-brand-500 mb-3"></i>
+                <p class="text-gray-700 dark:text-gray-200 font-medium">Saving data to Google Sheets...</p>
+            </div>
+
+            <div class="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-title">Add Subscription</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <form id="data-form" class="space-y-5">
+                    <input type="hidden" id="form-id">
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product Name <span class="text-red-500">*</span></label>
+                            <input type="text" id="f-name" required class="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-gray-900 dark:text-white transition-shadow">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Price <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <input type="number" step="0.01" id="f-price" required class="w-full pl-4 pr-16 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-gray-900 dark:text-white">
+                                <select id="f-currency" class="absolute right-1 top-1.5 bottom-1.5 bg-gray-100 dark:bg-gray-800 border-none rounded-md text-xs font-semibold px-2 text-gray-700 dark:text-gray-300 outline-none">
+                                    <option value="THB">THB</option>
+                                    <option value="USD">USD</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                            <select id="f-status" class="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-gray-900 dark:text-white">
+                                <option value="Paid">ชำระเงินแล้ว (Paid/Active)</option>
+                                <option value="Pending">รอชำระ (Pending)</option>
+                                <option value="Cancelled">ยกเลิกแล้ว (Cancelled)</option>
+                            </select>
+                        </div>
+
+                        <div class="sm:col-span-2 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Expiration Setting <span class="text-red-500">*</span></label>
+                            <div class="flex gap-4 mb-3">
+                                <label class="flex items-center gap-2 cursor-pointer text-sm dark:text-gray-300">
+                                    <input type="radio" name="expireType" value="Monthly" checked onchange="toggleExpireFields()" class="text-brand-500 focus:ring-brand-500"> Monthly (Same day)
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer text-sm dark:text-gray-300">
+                                    <input type="radio" name="expireType" value="Fixed" onchange="toggleExpireFields()" class="text-brand-500 focus:ring-brand-500"> Fixed Date
+                                </label>
+                            </div>
+                            
+                            <div id="field-monthly" class="fade-in">
+                                <label class="block text-xs text-gray-500 mb-1">Day of Month (1-31)</label>
+                                <input type="number" min="1" max="31" id="f-monthly-day" class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none dark:text-white">
+                            </div>
+                            <div id="field-fixed" class="hidden fade-in">
+                                <label class="block text-xs text-gray-500 mb-1">Specific Date</label>
+                                <input type="date" id="f-expire-date" class="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none dark:text-white">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Method</label>
+                            <input type="text" id="f-pay-method" placeholder="e.g., Credit Card" class="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Detail</label>
+                            <input type="text" id="f-pay-detail" placeholder="e.g., VISA 4450" class="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none dark:text-white">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contact Channel</label>
+                            <input type="text" id="f-contact" class="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Owner</label>
+                            <input type="text" id="f-owner" value="วิน" class="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none dark:text-white">
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reminder Emails (Comma separated)</label>
+                            <input type="text" id="f-emails" placeholder="admin@domain.com, win@domain.com" class="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none dark:text-white text-sm">
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reminder Days (Comma separated, e.g., 3,7,14)</label>
+                            <input type="text" id="f-reminder-days" placeholder="e.g., 3, 7" value="3,7" class="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none dark:text-white text-sm">
+                            <p class="text-xs text-gray-500 mt-1">ตั้งค่าให้ระบบแจ้งเตือนล่วงหน้าก่อนกี่วัน (เว้นวรรคด้วยลูกน้ำ)</p>
+                        </div>
+                        
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes / Extra Detail</label>
+                            <textarea id="f-notes" rows="2" class="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none dark:text-white"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-end gap-3">
+                <button type="button" onclick="closeModal()" class="px-5 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                <button type="button" onclick="saveData()" class="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium shadow-md shadow-brand-500/30 transition-all">Save Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script>
+        // --- API CONFIGURATION ---
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw2uItgGWqBjXmksngvm6DovTR6OXECLlGyFamvluLn-C1ZnP4SWBDy5ZcQqDz17_TLVw/exec"; 
+
+        // Global State
+        let rawData = [];
+        let currentMonthDate = new Date();
+        let myChart1 = null;
+        let myChart2 = null;
+        let notifications = JSON.parse(localStorage.getItem('st_notifications')) || [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check Dark Mode pref
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').classList.replace('fa-moon', 'fa-sun');
+                document.getElementById('theme-text').innerText = 'Light Mode';
+            }
+
+            // Init App
+            fetchDataFromGAS();
+            
+            // Search Listener
+            document.getElementById('global-search').addEventListener('input', (e) => {
+                const searchTerm = e.target.value.trim();
+                // ถ้ามีการพิมพ์คำค้นหา ให้สลับไปหน้า All Subscriptions อัตโนมัติ
+                if (searchTerm.length > 0) {
+                    if (document.getElementById('view-subscriptions').classList.contains('hidden')) {
+                        switchView('subscriptions');
+                    }
+                }
+                renderTable();
+            });
+            document.getElementById('filter-status').addEventListener('change', renderTable);
+            
+            renderNotifications();
+            document.addEventListener('click', (e) => {
+                const dropdown = document.getElementById('notification-dropdown');
+                const btn = document.getElementById('notification-btn');
+                if (dropdown && btn && !dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+                    toggleNotifications(false);
+                }
+            });
+        });
+
+        function toggleNotifications(forceState) {
+            const dropdown = document.getElementById('notification-dropdown');
+            if (forceState === false || !dropdown.classList.contains('hidden')) {
+                dropdown.classList.remove('opacity-100', 'translate-y-0');
+                dropdown.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => dropdown.classList.add('hidden'), 200);
+            } else {
+                dropdown.classList.remove('hidden');
+                setTimeout(() => {
+                    dropdown.classList.remove('opacity-0', 'translate-y-[-10px]');
+                    dropdown.classList.add('opacity-100', 'translate-y-0');
+                }, 10);
+            }
+        }
+
+        function addNotification(title, desc, type = 'info') {
+            const id = Date.now().toString();
+            const timestamp = new Date().toISOString();
+            notifications.unshift({ id, title, desc, type, timestamp, read: false });
+            if(notifications.length > 30) notifications.pop(); // Keep max 30 records
+            localStorage.setItem('st_notifications', JSON.stringify(notifications));
+            renderNotifications();
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notification-list');
+            const badge = document.getElementById('notification-badge');
+            if(!list || !badge) return;
+            
+            list.innerHTML = '';
+
+            const unreadCount = notifications.filter(n => !n.read).length;
+            if(unreadCount > 0) {
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            if(notifications.length === 0) {
+                list.innerHTML = `
+                    <div class="p-8 text-center text-gray-400 dark:text-gray-500">
+                        <i class="fa-regular fa-bell-slash text-3xl mb-3 opacity-50"></i>
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">No recent activity</p>
+                        <p class="text-xs mt-1">Changes you make will appear here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            notifications.forEach(n => {
+                let icon = 'fa-info-circle';
+                let colorClass = 'text-blue-500 bg-blue-100 dark:bg-blue-900/30';
+                
+                if(n.type === 'success') { icon = 'fa-check'; colorClass = 'text-green-500 bg-green-100 dark:bg-green-900/30'; }
+                if(n.type === 'error') { icon = 'fa-trash-can'; colorClass = 'text-red-500 bg-red-100 dark:bg-red-900/30'; }
+                if(n.type === 'update') { icon = 'fa-pen'; colorClass = 'text-brand-500 bg-brand-100 dark:bg-brand-900/30'; }
+
+                const timeString = getRelativeTime(new Date(n.timestamp));
+                const unreadClass = !n.read ? 'bg-brand-50/50 dark:bg-brand-900/10' : '';
+                const unreadDot = !n.read ? '<span class="w-2 h-2 rounded-full bg-brand-500 flex-shrink-0 mt-1.5 ml-2 shadow-sm shadow-brand-500/50"></span>' : '';
+
+                list.innerHTML += `
+                    <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors flex gap-3.5 ${unreadClass}">
+                        <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${colorClass}">
+                            <i class="fa-solid ${icon} text-xs"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-start gap-2">
+                                <p class="text-sm font-medium text-gray-800 dark:text-gray-200 ${!n.read ? 'font-semibold' : ''} truncate">${n.title}</p>
+                                ${unreadDot}
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed pr-2 break-words">${n.desc}</p>
+                            <p class="text-[10px] text-gray-400 mt-1.5 font-medium">${timeString}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function markAllAsRead() {
+            notifications.forEach(n => n.read = true);
+            localStorage.setItem('st_notifications', JSON.stringify(notifications));
+            renderNotifications();
+        }
+
+        function getRelativeTime(date) {
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - date) / 1000);
+            
+            if (diffInSeconds < 60) return 'Just now';
+            
+            const diffInMinutes = Math.floor(diffInSeconds / 60);
+            if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+            
+            const diffInHours = Math.floor(diffInMinutes / 60);
+            if (diffInHours < 24) return `${diffInHours}h ago`;
+            
+            const diffInDays = Math.floor(diffInHours / 24);
+            if (diffInDays === 1) return 'Yesterday';
+            if (diffInDays < 7) return `${diffInDays}d ago`;
+            
+            return date.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
+        }
+
+        // Toggle Sidebar Mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        // Theme Toggle
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            const text = document.getElementById('theme-text');
+            
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                icon.classList.replace('fa-sun', 'fa-moon');
+                text.innerText = 'Dark Mode';
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                icon.classList.replace('fa-moon', 'fa-sun');
+                text.innerText = 'Light Mode';
+            }
+            if(myChart1) renderCharts(); // Re-render charts for theme colors
+        }
+
+        // Custom Toast Notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = 'fa-check-circle';
+            if(type === 'error') icon = 'fa-circle-exclamation';
+            if(type === 'info') icon = 'fa-circle-info';
+
+            toast.innerHTML = `<i class="fa-solid ${icon} text-xl"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 3500);
+        }
+
+        // View Switcher
+        function switchView(viewId) {
+            // Hide all views
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-subscriptions').classList.add('hidden');
+            document.getElementById('view-calendar').classList.add('hidden');
+            
+            // Reset nav styles
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('text-brand-600', 'bg-brand-50', 'dark:bg-brand-500/10', 'dark:text-brand-400');
+                el.classList.add('text-gray-600', 'dark:text-gray-300');
+            });
+
+            // Show selected view
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+            
+            // Active nav style
+            const activeNav = document.getElementById(`nav-${viewId}`);
+            activeNav.classList.remove('text-gray-600', 'dark:text-gray-300');
+            activeNav.classList.add('text-brand-600', 'bg-brand-50', 'dark:bg-brand-500/10', 'dark:text-brand-400');
+
+            // Set Title
+            const titles = { 'dashboard': 'Dashboard', 'subscriptions': 'All Subscriptions', 'calendar': 'Renewal Calendar' };
+            document.getElementById('page-title').innerText = titles[viewId];
+
+            if(window.innerWidth < 768) toggleSidebar(); // Close mobile menu on click
+
+            if(viewId === 'calendar') renderCalendar();
+        }
+
+        async function fetchDataFromGAS() {
+            try {
+                const res = await fetch(GAS_API_URL);
+                const json = await res.json();
+                if(json.status === 'success' && json.data) {
+                    rawData = json.data;
+                    showToast('Data synced from Google Sheets', 'success');
+                } else {
+                    throw new Error("No data or invalid API");
+                }
+            } catch (err) {
+                console.error("Error fetching data from GAS:", err);
+                rawData = [];
+                showToast('Failed to load data from server', 'error');
+            }
+            processAndRenderAll();
+        }
+
+        function processAndRenderAll() {
+            renderStats();
+            renderTable();
+            renderCharts();
+            if(!document.getElementById('view-calendar').classList.contains('hidden')) {
+                renderCalendar();
+            }
+        }
+
+        function renderStats() {
+            let active = 0, pending = 0, expiring = 0;
+            let estMonthlyCostTHB = 0;
+            
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const next7Days = new Date(today);
+            next7Days.setDate(today.getDate() + 7);
+
+            rawData.forEach(item => {
+                const status = item.Status;
+                if (status === 'Paid' || status === 'ชำระเงินแล้ว') active++;
+                if (status === 'Pending' || status === 'รอชำระ') pending++;
+                
+                // Calculate Monthly Cost for Active/Pending
+                if (status !== 'Cancelled' && status !== 'ยกเลิกแล้ว') {
+                    let cost = parseFloat(item.Price) || 0;
+                    if (item.Currency === 'USD') cost *= 35; // Basic conversion
+                    
+                    if (item['Expire Type'] === 'Monthly') {
+                        estMonthlyCostTHB += cost;
+                    } else if (item['Expire Type'] === 'Fixed') {
+                        // Rough estimate: Yearly cost divided by 12
+                        estMonthlyCostTHB += (cost / 12);
+                    }
+                }
+
+                // Check Expiring
+                if (status !== 'Cancelled') {
+                    let targetDate = getNextDate(item);
+                    if (targetDate && targetDate >= today && targetDate <= next7Days) {
+                        expiring++;
+                    }
+                }
+            });
+
+            document.getElementById('stat-active').innerText = active;
+            document.getElementById('stat-pending').innerText = pending;
+            document.getElementById('stat-expiring').innerText = expiring;
+            document.getElementById('stat-monthly').innerText = '฿' + Math.round(estMonthlyCostTHB).toLocaleString();
+        }
+
+        function getNextDate(item) {
+            const today = new Date();
+            let targetDate = null;
+            if (item['Expire Type'] === 'Monthly' && item['Monthly Day']) {
+                let m = today.getMonth();
+                let y = today.getFullYear();
+                targetDate = new Date(y, m, parseInt(item['Monthly Day']));
+                if (targetDate < today) targetDate = new Date(y, m + 1, parseInt(item['Monthly Day']));
+            } else if (item['Expire Date']) {
+                targetDate = new Date(item['Expire Date']);
+            }
+            return targetDate;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            const searchTerm = document.getElementById('global-search').value.toLowerCase();
+            const filterStatus = document.getElementById('filter-status').value;
+            
+            tbody.innerHTML = '';
+            let count = 0;
+
+            // Sort logic: active/pending first, then by date
+            const sortedData = [...rawData].sort((a, b) => {
+                if(a.Status === 'Cancelled' && b.Status !== 'Cancelled') return 1;
+                if(a.Status !== 'Cancelled' && b.Status === 'Cancelled') return -1;
+                return 0;
+            });
+
+            sortedData.forEach(item => {
+                // Filters
+                const pName = item['Product Name'] ? item['Product Name'].toString().toLowerCase() : '';
+                const pNotes = item.Notes ? item.Notes.toString().toLowerCase() : '';
+                const pDetail = item['Payment Detail'] ? item['Payment Detail'].toString().toLowerCase() : '';
+                
+                const matchSearch = pName.includes(searchTerm) || pNotes.includes(searchTerm) || pDetail.includes(searchTerm);
+                
+                let sNorm = item.Status === 'ชำระเงินแล้ว' ? 'Paid' : (item.Status === 'รอชำระ' ? 'Pending' : (item.Status === 'ยกเลิกแล้ว' ? 'Cancelled' : item.Status));
+                const matchStatus = filterStatus === 'All' || sNorm === filterStatus;
+
+                if (!matchSearch || !matchStatus) return;
+                count++;
+
+                // Format Date
+                let dateDisplay = '-';
+                if (item['Expire Type'] === 'Monthly') {
+                    dateDisplay = `<span class="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">Every ${item['Monthly Day']}th</span>`;
+                } else if (item['Expire Date']) {
+                    let d = new Date(item['Expire Date']);
+                    if(!isNaN(d)) dateDisplay = d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric'});
+                }
+
+                // Badges
+                let statusBadge = '';
+                if (sNorm === 'Paid') statusBadge = '<span class="px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full border border-green-200 dark:border-green-800">Active</span>';
+                else if (sNorm === 'Pending') statusBadge = '<span class="px-2.5 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full border border-yellow-200 dark:border-yellow-800">Pending</span>';
+                else statusBadge = '<span class="px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 rounded-full border border-gray-200 dark:border-gray-700">Cancelled</span>';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group';
+                tr.innerHTML = `
+                    <td class="p-4" data-label="Product">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-100 to-indigo-100 dark:from-brand-900/40 dark:to-indigo-900/40 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold shadow-inner">
+                                ${item['Product Name'].charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">${item['Product Name']}</p>
+                                <p class="text-xs text-gray-500">${item['Payment Method']} ${item['Payment Detail'] ? `• ${item['Payment Detail']}` : ''}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4" data-label="Price">
+                        <p class="font-medium text-gray-900 dark:text-white">${parseFloat(item.Price).toLocaleString()} <span class="text-xs text-gray-500">${item.Currency}</span></p>
+                    </td>
+                    <td class="p-4" data-label="Renewal">
+                        ${dateDisplay}
+                    </td>
+                    <td class="p-4" data-label="Status">
+                        ${statusBadge}
+                    </td>
+                    <td class="p-4 text-right" data-label="Actions">
+                        <div class="flex gap-2 justify-end">
+                            <button onclick="sendReminderEmail('${item.ID}')" class="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-500 transition-colors flex items-center justify-center" title="Send manual reminder to specified emails">
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                            </button>
+                            <button onclick="openModal('${item.ID}')" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors flex items-center justify-center" title="Edit">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="deleteItem('${item.ID}')" class="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-500 transition-colors flex items-center justify-center" title="Delete">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('table-count').innerText = `Showing ${count} items`;
+            
+            if(count === 0) {
+                document.getElementById('empty-state').classList.remove('hidden');
+                document.querySelector('.responsive-table').classList.add('hidden');
+            } else {
+                document.getElementById('empty-state').classList.add('hidden');
+                document.querySelector('.responsive-table').classList.remove('hidden');
+            }
+        }
+
+        function renderCharts() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#cbd5e1' : '#475569';
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+
+            // Prepare Data for Status Donut
+            let cPaid = 0, cPending = 0, cCancel = 0;
+            rawData.forEach(item => {
+                let s = item.Status;
+                if(s === 'Paid' || s === 'ชำระเงินแล้ว') cPaid++;
+                else if(s === 'Pending' || s === 'รอชำระ') cPending++;
+                else cCancel++;
+            });
+
+            const ctxDonut = document.getElementById('doughnutChart').getContext('2d');
+            if(myChart1) myChart1.destroy();
+            myChart1 = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active/Paid', 'Pending', 'Cancelled'],
+                    datasets: [{
+                        data: [cPaid, cPending, cCancel],
+                        backgroundColor: ['#10b981', '#f59e0b', '#94a3b8'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: textColor, padding: 20, usePointStyle: true } } },
+                    cutout: '75%'
+                }
+            });
+
+            // Prepare Data for Cost Bar Chart (Top 5 expensive active items)
+            const activeItems = rawData.filter(i => i.Status !== 'Cancelled' && i.Status !== 'ยกเลิกแล้ว');
+            const costData = activeItems.map(i => {
+                let cost = parseFloat(i.Price) || 0;
+                if (i.Currency === 'USD') cost *= 35;
+                if (i['Expire Type'] === 'Fixed') cost = cost / 12; // Normalize to monthly
+                return { name: i['Product Name'].substring(0, 15) + '...', cost: cost };
+            }).sort((a,b) => b.cost - a.cost).slice(0, 5);
+
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            if(myChart2) myChart2.destroy();
+            myChart2 = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: costData.map(d => d.name),
+                    datasets: [{
+                        label: 'Est. Monthly Cost (THB)',
+                        data: costData.map(d => Math.round(d.cost)),
+                        backgroundColor: '#6366f1',
+                        borderRadius: 6,
+                        barThickness: 24
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } },
+                        x: { grid: { display: false }, ticks: { color: textColor, maxRotation: 45, minRotation: 45 } }
+                    }
+                }
+            });
+        }
+
+        function changeMonth(delta) {
+            currentMonthDate.setMonth(currentMonthDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            
+            const year = currentMonthDate.getFullYear();
+            const month = currentMonthDate.getMonth();
+            
+            document.getElementById('calendar-month-year').innerText = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // Empty slots for previous month
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="p-2 sm:p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/30 border border-transparent"></div>`;
+            }
+            
+            // Days of current month
+            const today = new Date();
+            for (let day = 1; day <= daysInMonth; day++) {
+                const currentDate = new Date(year, month, day);
+                let isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                
+                let dayContent = `<div class="font-medium text-sm ${isToday ? 'bg-brand-500 text-white w-7 h-7 rounded-full flex items-center justify-center mx-auto' : 'text-gray-700 dark:text-gray-300'}">${day}</div>`;
+                let itemsHtml = '';
+                
+                // Find subscriptions for this day
+                rawData.forEach(item => {
+                    if (item.Status === 'Cancelled' || item.Status === 'ยกเลิกแล้ว') return;
+                    
+                    let isMatch = false;
+                    if (item['Expire Type'] === 'Monthly' && parseInt(item['Monthly Day']) === day) {
+                        isMatch = true;
+                    } else if (item['Expire Type'] === 'Fixed' && item['Expire Date']) {
+                        const ed = new Date(item['Expire Date']);
+                        if (ed.getDate() === day && ed.getMonth() === month && ed.getFullYear() === year) isMatch = true;
+                    }
+                    
+                    if (isMatch) {
+                        let colorClass = item.Status === 'Pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/40' : 'bg-brand-50 text-brand-700 border-brand-100 dark:bg-brand-900/40 dark:text-brand-300';
+                        itemsHtml += `<div class="mt-1 text-[10px] leading-tight p-1 rounded border truncate ${colorClass}" title="${item['Product Name']}">${item['Product Name']}</div>`;
+                    }
+                });
+
+                grid.innerHTML += `
+                    <div class="p-1 sm:p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 min-h-[80px] transition-shadow hover:shadow-md">
+                        ${dayContent}
+                        <div class="mt-1 flex flex-col gap-1">${itemsHtml}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function openModal(id = null) {
+            document.getElementById('data-form').reset();
+            document.getElementById('form-id').value = '';
+            document.getElementById('modal-title').innerText = 'Add New Subscription';
+            toggleExpireFields(); // Reset display
+
+            if (id) {
+                const item = rawData.find(i => i.ID === id);
+                if (item) {
+                    document.getElementById('modal-title').innerText = 'Edit Subscription';
+                    document.getElementById('form-id').value = item.ID;
+                    document.getElementById('f-name').value = item['Product Name'];
+                    document.getElementById('f-price').value = item.Price;
+                    document.getElementById('f-currency').value = item.Currency || 'THB';
+                    
+                    let s = item.Status;
+                    if(s==='ชำระเงินแล้ว') s='Paid'; else if(s==='รอชำระ') s='Pending'; else if(s==='ยกเลิกแล้ว') s='Cancelled';
+                    document.getElementById('f-status').value = s;
+
+                    if (item['Expire Type'] === 'Fixed') {
+                        document.querySelector('input[name="expireType"][value="Fixed"]').checked = true;
+                        if(item['Expire Date']) {
+                            const d = new Date(item['Expire Date']);
+                            if(!isNaN(d)) document.getElementById('f-expire-date').value = d.toISOString().split('T')[0];
+                        }
+                    } else {
+                        document.querySelector('input[name="expireType"][value="Monthly"]').checked = true;
+                        document.getElementById('f-monthly-day').value = item['Monthly Day'];
+                    }
+                    toggleExpireFields();
+
+                    document.getElementById('f-pay-method').value = item['Payment Method'] || '';
+                    document.getElementById('f-pay-detail').value = item['Payment Detail'] || '';
+                    document.getElementById('f-contact').value = item['Contact Channel'] || '';
+                    document.getElementById('f-owner').value = item.Owner || 'วิน';
+                    document.getElementById('f-emails').value = item['Reminder Emails'] || '';
+                    document.getElementById('f-reminder-days').value = item['Reminder Days'] || '3,7';
+                    document.getElementById('f-notes').value = item.Notes || item['Extra Detail'] || '';
+                }
+            }
+
+            const modal = document.getElementById('modal-backdrop');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('modal-content').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal-backdrop');
+            modal.classList.add('opacity-0');
+            document.getElementById('modal-content').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function toggleExpireFields() {
+            const type = document.querySelector('input[name="expireType"]:checked').value;
+            if (type === 'Monthly') {
+                document.getElementById('field-monthly').classList.remove('hidden');
+                document.getElementById('field-fixed').classList.add('hidden');
+            } else {
+                document.getElementById('field-monthly').classList.add('hidden');
+                document.getElementById('field-fixed').classList.remove('hidden');
+            }
+        }
+
+        // Add or Update
+        async function saveData() {
+            const form = document.getElementById('data-form');
+            if(!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const id = document.getElementById('form-id').value;
+            const expType = document.querySelector('input[name="expireType"]:checked').value;
+            
+            const newData = {
+                'Product Name': document.getElementById('f-name').value,
+                'Price': document.getElementById('f-price').value,
+                'Currency': document.getElementById('f-currency').value,
+                'Status': document.getElementById('f-status').value,
+                'Expire Type': expType,
+                'Monthly Day': expType === 'Monthly' ? document.getElementById('f-monthly-day').value : '',
+                'Expire Date': expType === 'Fixed' ? document.getElementById('f-expire-date').value : '',
+                'Payment Method': document.getElementById('f-pay-method').value,
+                'Payment Detail': document.getElementById('f-pay-detail').value,
+                'Contact Channel': document.getElementById('f-contact').value,
+                'Owner': document.getElementById('f-owner').value,
+                'Reminder Emails': document.getElementById('f-emails').value,
+                'Reminder Days': document.getElementById('f-reminder-days').value,
+                'Notes': document.getElementById('f-notes').value,
+            };
+
+            const payload = {
+                action: id ? 'update' : 'add',
+                data: { ...newData, ID: id }
+            };
+
+            // Show loader
+            document.getElementById('modal-loader').classList.remove('hidden');
+            document.getElementById('modal-loader').style.display = 'flex';
+
+            try {
+                // Call Google Apps Script API
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                
+                if(result.status === 'success') {
+                    if(id) {
+                        const index = rawData.findIndex(i => i.ID === id);
+                        if(index > -1) rawData[index] = { ...rawData[index], ...newData };
+                        addNotification('Subscription Updated', `Details for "${newData['Product Name']}" were updated.`, 'update');
+                    } else {
+                        newData.ID = result.id || Math.random().toString(36).substring(7); // fallback random ID
+                        rawData.push(newData);
+                        addNotification('New Subscription', `"${newData['Product Name']}" was successfully added.`, 'success');
+                    }
+                    
+                    showToast(id ? 'Updated successfully' : 'Added successfully', 'success');
+                    closeModal();
+                    processAndRenderAll();
+                } else {
+                    throw new Error("API returned error");
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error saving data. Check connection.', 'error');
+            } finally {
+                // Hide loader
+                document.getElementById('modal-loader').classList.add('hidden');
+                document.getElementById('modal-loader').style.display = 'none';
+            }
+        }
+
+        // Send Reminder Email
+        async function sendReminderEmail(id) {
+            const item = rawData.find(i => i.ID === id);
+            if (!item) return;
+
+            const emails = item['Reminder Emails'];
+            if (!emails || emails.trim() === '') {
+                showToast('Please edit and specify "Reminder Emails" first.', 'error');
+                return;
+            }
+
+            showToast('Sending email...', 'info');
+
+            try {
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'send_reminder', data: { ID: id } })
+                });
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    showToast('Reminder email sent!', 'success');
+                    addNotification('Email Sent', `Manual reminder sent to ${emails} for "${item['Product Name']}"`, 'success');
+                } else {
+                    throw new Error("API Error");
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error sending email', 'error');
+            }
+        }
+
+        // Delete
+        async function deleteItem(id) {
+            const itemToDelete = rawData.find(i => i.ID === id);
+            const itemName = itemToDelete ? itemToDelete['Product Name'] : 'Item';
+            
+            showToast('Deleting...', 'info');
+            
+            try {
+                const res = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'delete', data: { ID: id } })
+                });
+                const result = await res.json();
+                if(result.status === 'success') {
+                    rawData = rawData.filter(i => i.ID !== id);
+                    addNotification('Subscription Removed', `"${itemName}" has been deleted.`, 'error');
+                    showToast('Deleted successfully', 'success');
+                    processAndRenderAll();
+                } else {
+                    throw new Error("API Error");
+                }
+            } catch(err) {
+                console.error(err);
+                showToast('Error deleting item', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
