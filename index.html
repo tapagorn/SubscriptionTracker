@@ -194,7 +194,7 @@
             
             <div id="view-dashboard" class="fade-in space-y-6">
                 <!-- Stats Row -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
                     <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Active</p>
@@ -211,6 +211,15 @@
                         </div>
                         <div class="w-12 h-12 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400">
                             <i class="fa-solid fa-wallet text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Yearly Est. Cost</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1" id="stat-yearly">฿0</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <i class="fa-solid fa-money-bill-trend-up text-xl"></i>
                         </div>
                     </div>
                     <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
@@ -697,6 +706,7 @@
         function renderStats() {
             let active = 0, pending = 0, expiring = 0;
             let estMonthlyCostTHB = 0;
+            let estYearlyCostTHB = 0;
             
             const today = new Date();
             today.setHours(0,0,0,0);
@@ -708,21 +718,23 @@
                 if (status === 'Paid' || status === 'ชำระเงินแล้ว') active++;
                 if (status === 'Pending' || status === 'รอชำระ') pending++;
                 
-                // Calculate Monthly Cost for Active/Pending
-                if (status !== 'Cancelled' && status !== 'ยกเลิกแล้ว') {
+                // Calculate Monthly and Yearly Cost for Active/Pending
+                if (status === 'Paid' || status === 'ชำระเงินแล้ว' || status === 'Pending' || status === 'รอชำระ') {
                     let cost = parseFloat(item.Price) || 0;
                     if (item.Currency === 'USD') cost *= 35; // Basic conversion
                     
                     if (item['Expire Type'] === 'Monthly') {
                         estMonthlyCostTHB += cost;
+                        estYearlyCostTHB += (cost * 12);
                     } else if (item['Expire Type'] === 'Fixed') {
                         // Rough estimate: Yearly cost divided by 12
                         estMonthlyCostTHB += (cost / 12);
+                        estYearlyCostTHB += cost;
                     }
                 }
 
                 // Check Expiring
-                if (status !== 'Cancelled') {
+                if (status !== 'Cancelled' && status !== 'ยกเลิกแล้ว') {
                     let targetDate = getNextDate(item);
                     if (targetDate && targetDate >= today && targetDate <= next7Days) {
                         expiring++;
@@ -734,6 +746,7 @@
             document.getElementById('stat-pending').innerText = pending;
             document.getElementById('stat-expiring').innerText = expiring;
             document.getElementById('stat-monthly').innerText = '฿' + Math.round(estMonthlyCostTHB).toLocaleString();
+            document.getElementById('stat-yearly').innerText = '฿' + Math.round(estYearlyCostTHB).toLocaleString();
         }
 
         function getNextDate(item) {
